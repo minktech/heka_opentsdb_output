@@ -123,13 +123,11 @@ func WriteDataToOpenTSDB(mo *OpenTsdbOutput) {
 
 	//srvlog.Printf("WriteDataToOpenTSDB key:%s", key)
 	cache := make([][]byte, mo.TsdbWritingSize)
+	var lastWrite time.Time
 	i := 0
 
 	for logMsg := range mo.logMsgChan {
-		if i < mo.TsdbWritingSize {
-			cache[i] = logMsg
-			i++
-		} else {
+		if i >= mo.TsdbWritingSize || time.Now().Sub(lastWrite) > time.Second*time.Duration(mo.TsdbWriteTimeout) {
 			resp, err := mo.SendDataPoints(cache, mo.Url)
 			if err != nil || resp.StatusCode != http.StatusNoContent {
 				//restore
@@ -138,7 +136,10 @@ func WriteDataToOpenTSDB(mo *OpenTsdbOutput) {
 					time.Sleep(time.Second * 5)
 				}
 			}
+			i = 0
 		}
+		cache[i] = logMsg
+		i++
 	}
 }
 
