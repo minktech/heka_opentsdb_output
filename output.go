@@ -128,7 +128,7 @@ func WriteDataToOpenTSDB(mo *OpenTsdbOutput) {
 
 	for logMsg := range mo.logMsgChan {
 		if i >= mo.TsdbWritingSize || time.Now().Sub(lastWrite) > time.Second*time.Duration(mo.TsdbWriteTimeout) {
-			resp, err := mo.SendDataPoints(cache, mo.Url)
+			resp, err := mo.SendDataPoints(cache[:i], mo.Url)
 			if err != nil || resp.StatusCode != http.StatusNoContent {
 				//restore
 				for _, v := range cache {
@@ -136,6 +136,7 @@ func WriteDataToOpenTSDB(mo *OpenTsdbOutput) {
 					time.Sleep(time.Second * 5)
 				}
 			}
+			cache
 			i = 0
 		}
 		cache[i] = logMsg
