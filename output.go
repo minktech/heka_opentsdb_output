@@ -136,7 +136,7 @@ func WriteDataToOpenTSDB(mo *OpenTsdbOutput) {
 					time.Sleep(time.Second * 5)
 				}
 			}
-			cache
+			lastWrite = time.Now()
 			i = 0
 		}
 		cache[i] = logMsg
