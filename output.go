@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"errors"
+	"fmt"
 	"github.com/mozilla-services/heka/pipeline"
 	"gopkg.in/mgo.v2"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -100,6 +102,7 @@ func (o *OpenTsdbOutput) SendDataPoints(dps [][]byte, tsdb string) (*http.Respon
 	g.Write([]byte("]"))
 
 	if err := g.Close(); err != nil {
+		fmt.Println("gzip error")
 		return nil, err
 	}
 	req, err := http.NewRequest("POST", tsdb, &buf)
@@ -126,9 +129,19 @@ func WriteDataToOpenTSDB(mo *OpenTsdbOutput) {
 	i := 0
 
 	for logMsg := range mo.logMsgChan {
+		if i < mo.TsdbWritingSize {
+			cache[i] = logMsg
+			i++
+		}
 		if i >= mo.TsdbWritingSize || time.Now().Sub(lastWrite) > time.Second*time.Duration(mo.TsdbWriteTimeout) {
 			resp, err := mo.SendDataPoints(cache[:i], mo.Url)
 			if err != nil || resp.StatusCode != http.StatusNoContent {
+				if err == nil {
+					bts, _ := ioutil.ReadAll(resp.Body)
+					log.Println(string(bts))
+				} else {
+					log.Println("error", err)
+				}
 				//restore
 				for _, v := range cache {
 					mo.logMsgChan <- v
@@ -138,8 +151,6 @@ func WriteDataToOpenTSDB(mo *OpenTsdbOutput) {
 			lastWrite = time.Now()
 			i = 0
 		}
-		cache[i] = logMsg
-		i++
 	}
 }
 

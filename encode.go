@@ -72,10 +72,16 @@ func (e *OpenTsdbEncoder) Encode(pack *PipelinePack) (output []byte, err error) 
 				}
 			}
 		}
+		for _, v := range e.Tags {
+			if tag, ok := tagMsg[v]; ok {
+				dp[0].Tags[v] = fmt.Sprintf("%v", tag)
+			}
+		}
 		goto copy_0_tags_to_n
 	}
 
 j_b_son_get_value:
+	fmt.Println(tagMsg)
 	for i := 0; i < len(e.Values); i++ {
 		dp[i] = new(opentsdb.DataPoint)
 		dp[i].Value = tagMsg[e.Values[i]]
@@ -94,7 +100,14 @@ copy_0_tags_to_n:
 		}
 	}
 
-	if bts, err := json.Marshal(dp); err == nil {
+	dp_non_empty := make([]*opentsdb.DataPoint, 0)
+	for _, v := range dp {
+		if v.Value != nil {
+			dp_non_empty = append(dp_non_empty, v)
+		}
+	}
+
+	if bts, err := json.Marshal(dp_non_empty); err == nil {
 		bts = bts[1:]
 		bts = bts[:len(bts)-1]
 		return bts, err
