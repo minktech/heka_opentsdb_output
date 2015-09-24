@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"gopkg.in/mgo.v2/bson"
-	"strings"
 	"time"
 
 	. "github.com/mozilla-services/heka/pipeline"
@@ -31,13 +30,12 @@ type OpenTsdbEncoderConfig struct {
 func (e *OpenTsdbEncoder) ConfigStruct() interface{} {
 	return &OpenTsdbEncoderConfig{
 		Decode: "raw",
-		Value:  "payload",
+		Values: []string{"payload"},
 	}
 }
 
 func (e *OpenTsdbEncoder) Init(config interface{}) (err error) {
 	e.OpenTsdbEncoderConfig = config.(*OpenTsdbEncoderConfig)
-	e.Tags = strings.Split(e.Tags_str, ",")
 	return
 }
 
@@ -65,8 +63,12 @@ func (e *OpenTsdbEncoder) Encode(pack *PipelinePack) (output []byte, err error) 
 				dp[i].Value = payload
 				dp[i].Metric = e.Metric
 			} else {
-				dp[i].Value = pack.Message.GetFieldValue(e.Values[i])
-				dp[i].Metric = e.Metric + "." + e.Values[i]
+				var ok bool
+				if dp[i].Value, ok = pack.Message.GetFieldValue(e.Values[i]); ok {
+					dp[i].Metric = e.Metric + "." + e.Values[i]
+				} else {
+					dp[i] = nil
+				}
 			}
 		}
 		goto copy_0_tags_to_n
@@ -84,14 +86,19 @@ j_b_son_get_value:
 	}
 copy_0_tags_to_n:
 	for i := 0; i < len(dp); i++ {
-		dp[i].Tags = dp[0].Tags
-		dp[i].Timestamp = time.Now().Unix()
+		if dp[i] != nil {
+			dp[i].Tags = dp[0].Tags
+			dp[i].Timestamp = time.Now().Unix()
+		}
 	}
 
-	bts := json.Marshal(dp)
-	bts = bts[1:]
-	bts = bts[:len(bts)-1]
-	return bts
+	if bts, err := json.Marshal(dp); err == nil {
+		bts = bts[1:]
+		bts = bts[:len(bts)-1]
+		return bts, err
+	} else {
+		return bts, err
+	}
 }
 
 func init() {
