@@ -42,18 +42,17 @@ type OpenTsdbOutputConfig struct {
 	TsdbWriterCount int
 	//the time period of writing data to opentsdb
 	TsdbWriteTimeout int
-	//the basename for all metrics
-	Root string
 	//the url of opentsdb server
 	Url string
 }
 
 func (o *OpenTsdbOutput) ConfigStruct() interface{} {
 	return &OpenTsdbOutputConfig{
-		Url:             "127.0.0.1:4242",
-		LogMsgChSize:    10000,
-		TsdbWritingSize: 20,
-		TsdbWriterCount: runtime.NumCPU(),
+		Url:              "127.0.0.1:4242",
+		LogMsgChSize:     10000,
+		TsdbWritingSize:  20,
+		TsdbWriteTimeout: 10,
+		TsdbWriterCount:  runtime.NumCPU(),
 	}
 }
 
