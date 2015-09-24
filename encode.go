@@ -59,6 +59,7 @@ func (e *OpenTsdbEncoder) Encode(pack *PipelinePack) (output []byte, err error) 
 		goto j_b_son_get_value
 	default:
 		for i := 0; i < len(e.Values); i++ {
+			dp[i] = new(opentsdb.DataPoint)
 			if e.Values[i] == "payload" {
 				dp[i].Value = payload
 				dp[i].Metric = e.Metric
@@ -76,6 +77,7 @@ func (e *OpenTsdbEncoder) Encode(pack *PipelinePack) (output []byte, err error) 
 
 j_b_son_get_value:
 	for i := 0; i < len(e.Values); i++ {
+		dp[i] = new(opentsdb.DataPoint)
 		dp[i].Value = tagMsg[e.Values[i]]
 		dp[i].Metric = e.Metric + "." + e.Values[i]
 	}
