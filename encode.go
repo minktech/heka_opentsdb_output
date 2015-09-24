@@ -12,7 +12,6 @@ import (
 
 type OpenTsdbEncoder struct {
 	*OpenTsdbEncoderConfig
-	Tags []string
 }
 
 type OpenTsdbEncoderConfig struct {
@@ -24,7 +23,8 @@ type OpenTsdbEncoderConfig struct {
 	Tags   []string
 	Values []string
 	//the metric root
-	Metric string
+	Metric     string
+	TagIfEmpty map[string]string `toml:"tag_for_empty"`
 }
 
 func (e *OpenTsdbEncoder) ConfigStruct() interface{} {
@@ -81,15 +81,23 @@ func (e *OpenTsdbEncoder) Encode(pack *PipelinePack) (output []byte, err error) 
 	}
 
 j_b_son_get_value:
-	fmt.Println(tagMsg)
 	for i := 0; i < len(e.Values); i++ {
 		dp[i] = new(opentsdb.DataPoint)
 		dp[i].Value = tagMsg[e.Values[i]]
 		dp[i].Metric = e.Metric + "." + e.Values[i]
 	}
+	dp[0].Tags = make(opentsdb.TagSet)
 	for _, v := range e.Tags {
 		if tag, ok := tagMsg[v]; ok {
 			dp[0].Tags[v] = fmt.Sprintf("%v", tag)
+		}
+	}
+	// clean_empty_tag:
+	for k, v := range dp[0].Tags {
+		if v == "" {
+			if tagForEmpty, ok := e.TagIfEmpty[k]; ok {
+				dp[0].Tags[k] = tagForEmpty
+			}
 		}
 	}
 copy_0_tags_to_n:
@@ -102,7 +110,7 @@ copy_0_tags_to_n:
 
 	dp_non_empty := make([]*opentsdb.DataPoint, 0)
 	for _, v := range dp {
-		if v.Value != nil {
+		if v.Value != nil && v.Tags != nil {
 			dp_non_empty = append(dp_non_empty, v)
 		}
 	}
